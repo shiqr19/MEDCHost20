@@ -14,6 +14,11 @@ import pupil_apriltags
 
 
 ser_sta = 0
+task_sta = 0
+timing_sta = 0
+start_time = time.clock()
+in_area = 20
+around_area = 50
 def tran_pos(corners, pos, D):
     """corners is a matrix with shape of 4*2 clockwise left-up to left-down
     pos is the coordinate of ball (x,y)
@@ -44,7 +49,7 @@ def find(gray,ball_val_L,test):
     # upper = np.array([hh, hs, hv])
     # mask = cv2.inRange(HSV, lower, upper)   # 二值化
     mask = cv2.inRange(gray, ball_val_L.value(), 255)  # 二值化
-    cv2.imshow('mask', mask)
+    #cv2.imshow('mask', mask)
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)  # 找图像轮廓
     tempdist = 60000
     for i in range(len(contours)):  # 遍历每个轮廓
@@ -70,14 +75,16 @@ def find(gray,ball_val_L,test):
     return X, Y, Xsend, Ysend
 
 #找四个角点
-def find_corner_apriltag(at_detector,gray,image):
+def find_corner_apriltag(at_detector,gray,image,tag_id,tag_id_text):
     tags = at_detector.detect(gray)
     X = []
     Y = []
     for tag in tags:
-        X.append(int(tag.center[0]))
-        Y.append(int(tag.center[1]))
-        cv2.circle(image, (int(tag.center[0]), int(tag.center[1])), 3, (0, 0, 255), 6)
+        if tag_id == -1 or tag.tag_id == tag_id:
+            X.append(int(tag.center[0]))
+            Y.append(int(tag.center[1]))
+            cv2.circle(image, (int(tag.center[0]), int(tag.center[1])), 3, (0, 0, 255), 6)
+            tag_id_text.setText(str(tags[0].tag_id))
     return np.array(X), np.array(Y), len(X)
 
 
@@ -90,25 +97,60 @@ def camDialog():
         QMessageBox.critical(None, "Error", "选择默认相机0")
         return 0
 
+#选择Tag编号
+def get_tag_id():
+    tag_id, okPressed = QInputDialog.getInt(None,"选择组号","请选择组号（0-23）,-1为识别所有tag:",min=-1,max=23)
+    if okPressed:
+        return tag_id
+    else:
+        QMessageBox.critical(None, "Error", "识别所有tag")
+        return -1
+
+
+#评分机制
+def judge_in_area(x_send,y_send,x_target,y_target):
+    distance = math.sqrt((x_send-x_target)**2 + (y_send - y_target)**2)
+    if distance < in_area:
+        return 1
+    elif distance < around_area:
+        return 2
+    else:
+        return 0
+
+
 
 class CamOpenThread(QThread):
-    #update_data = pyqtSignal(int,int)
+    updated = QtCore.pyqtSignal(str)
 
-    def __init__(self,cam_open,cam,ballx,bally,arena,time,ser,ball_val_L,X,Y,parent=None):
+    def __init__(self,cam_open,cam,arena,ser,ball_val_L,X,Y,total_time,result_text,task_start,current_point_text,current_time_text,task_sta,tag_id,tag_id_text,parent=None):
         super(CamOpenThread,self).__init__(parent)
         self.cam =cam
-        self.ballx = ballx
-        self.bally = bally
         self.arena = arena
-        self.time = time
         self.ser = ser
         self.ball_val_L = ball_val_L
         self.cam_open = cam_open
         self.X = X
         self.Y = Y
+        self.total_time = total_time
+        self.result_text = result_text
+        self.task_start = task_start
+        self.current_point_text = current_point_text
+        self.current_time_text = current_time_text
+        self.task_sta = task_sta
+        self.tag_id = tag_id
+        self.tag_id_text = tag_id_text
+        self.tasks = [[[200,200]],[[200,200]],[[100,300],[300,300],[300,100],[100,100]]]
+        self.point_count = [0,1,4]
+        self.total_task = 0
+        self.current_point = 0
+        self.in_area_time = time.clock()
+        self.in_area_sta = 0
+        self.stop_timing_sta = 0
+        self.total_time_list = []
         
 
     def run(self):
+
         WIDTH = 1280
         HEIGHT = 720
         self.cam.set(cv2.CAP_PROP_FRAME_WIDTH, WIDTH)
@@ -127,6 +169,14 @@ class CamOpenThread(QThread):
 
         i=0
         while self.cam.isOpened():
+            #display total time
+            global timing_sta,start_time,task_sta
+            if timing_sta == 1:
+                if i%30 == 0:
+                    time_present = float(time.clock())- float(start_time)
+                    self.total_time.setText('%d'%time_present)
+            
+
             i += 1
             _, image = self.cam.read()
             # print(np.shape(image))
@@ -134,7 +184,7 @@ class CamOpenThread(QThread):
             # HSV = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
             # CornerX, CornerY, num = find_corner(40, 60, 80, 60, 255, 255)
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            CornerX, CornerY, num = find_corner_apriltag(at_detector,gray,image)
+            CornerX, CornerY, num = find_corner_apriltag(at_detector,gray,image,self.tag_id,self.tag_id_text)
             if num == 4:
                 XY0 = CornerX + CornerY
                 XY1 = CornerX - CornerY
@@ -163,16 +213,78 @@ class CamOpenThread(QThread):
 
                 if CenterX != 0 and CenterY != 0:
                     cv2.circle(image, (CenterX, CenterY), 3, (0, 255, 0), 6)
-                    self.ballx.setText(str(Xsend))
-                    self.bally.setText(str(Ysend))
 
                 Xsend = 400 - Xsend
                 Ysend = 400 - Ysend
                 # print(Xsend, Ysend)
 
+                #判断
+                self.total_task = self.point_count[task_sta]
+                if task_sta == 0:
+                    self.current_point = 0
+                    self.in_area_sta = 0
+                    self.stop_timing_sta = 0
+                    self.total_time_list = []
+                if task_sta != 0:
+                    if timing_sta == 1:
+                        distance = judge_in_area(Xsend,Ysend,self.tasks[task_sta][self.current_point][0],self.tasks[task_sta][self.current_point][1])
+                        if self.current_point < self.total_task:
+                            if self.in_area_sta == 0:
+                                if distance == 1:
+                                    self.in_area_time = time.clock()
+                                    self.in_area_sta = 1
+                                    self.stop_timing_sta = 0
+                                    self.in_area_time = time.clock()
+                            else:
+                                if distance == 0:
+                                    self.in_area_sta = 0
+                                    self.total_time_list = []
+                                    self.current_time_text.setText('0')
+                                elif distance == 2:
+                                    if self.stop_timing_sta == 0:
+                                        self.stop_timing_sta = 1
+                                        self.total_time_list.append(float(time.clock())-float(self.in_area_time))
+                                elif distance == 1:
+                                    if self.stop_timing_sta == 1:
+                                        self.stop_timing_sta = 0
+                                        self.in_area_time = time.clock()
+                                    total = sum(self.total_time_list) + float(time.clock())-float(self.in_area_time)
+                                    self.current_time_text.setText(str(total))
+                                    #显示
+                                    if total > 3:
+                                        #显示单点完成
+                                        self.updated.emit('Task %d Point %d Done!'%(task_sta,self.current_point+1))
+                                        self.current_point += 1
+                                        self.in_area_sta = 0
+                                        self.total_time_list = []
+                                        self.current_time_text.setText('0')
+                                        #判断是否完成全部任务
+                                        if self.current_point == self.total_task:
+                                            self.updated.emit('Task %d Finished! Total time:%.6f\n\n'%(task_sta,float(time.clock())-float(start_time)))
+                                            #终止任务
+                                            task_sta = 0
+                                            self.task_start.setEnabled(True)
+                                            timing_sta = 0
+                                            self.current_point_text.setText(' ')
+                                            self.current_point = 0
+                                            self.task_sta.setText('0')
+                                            
+
+
+
+                    
+
+                #向串口发数据
                 global ser_sta
                 if ser_sta == 1:
+                    if task_sta != 0:
+                        target = self.tasks[task_sta][0]
+                        self.current_point_text.setText('(%s,%s)'%(str(self.tasks[task_sta][self.current_point][0]),str(self.tasks[task_sta][self.current_point][1])))
+                        if timing_sta == 0:
+                            Xsend = target[0]
+                            Ysend = target[1]
                     s = bytes([250, (Xsend >> 7) + 1, (Xsend & 0x7f) + 1, (Ysend >> 7) + 1, (Ysend & 0x7f) + 1])
+                            
                     try:
                         self.ser.write(s)
                         self.X.setText(str(Xsend))
@@ -182,7 +294,6 @@ class CamOpenThread(QThread):
                         self.Y.setText('ser error!')
                     
 
-            self.time.setText(str(time.clock()))
             # 显示图像，其实有ui就不需要它了，但去掉的话ui也显示不出来，不知道为啥，只能这样最小化了
             cv2.imshow("image", image)
             cv2.moveWindow("image", 0, 0)
@@ -197,10 +308,6 @@ class CamOpenThread(QThread):
                 start = time.clock()
             if i == 120:
                 print(time.clock() - start)
-
-
-
-
 
 
 
@@ -239,9 +346,15 @@ class MainWindow(QMainWindow, Ui_mainwindow):
         self.cam_open.clicked.connect(self.openCamera)
         self.ser_update.clicked.connect(self.updateSerlist)
         self.cam_int = camDialog()
+        self.tag_id = get_tag_id()
         self.camera = cv2.VideoCapture(self.cam_int)
         self.cam_label.setText(str(self.cam_int))
+        self.tag_id_text.setText(str(self.tag_id))
+        self.task_start.clicked.connect(self.taskStart)
+        self.timing_start.clicked.connect(self.timingStart)
+        self.task_terminate.clicked.connect(self.taskTerminate)
 
+    #打开串口
     def openSerial(self):        
         global ser_sta
         try:
@@ -264,6 +377,7 @@ class MainWindow(QMainWindow, Ui_mainwindow):
             self.ser_status.setText("port error!")
         return
 
+    #关闭串口
     def closeSerial(self):
         global ser_sta
         try:
@@ -275,10 +389,16 @@ class MainWindow(QMainWindow, Ui_mainwindow):
             self.ser_status.setText("port close error!")
         return
 
+    #进入打开相机线程
     def openCamera(self):
-        self.cam_th = CamOpenThread(self.cam_open,self.camera,self.ballx,self.bally,self.arena,self.time,self.ser,self.ball_val_L,self.X,self.Y)
+        self.cam_th = CamOpenThread(self.cam_open,self.camera,self.arena,self.ser,self.ball_val_L,self.X,self.Y,self.total_time,self.result_text,self.task_start,self.current_point_text,self.current_time_text,self.task_sta,self.tag_id,self.tag_id_text)
+        self.cam_th.updated.connect(self.updateResult)
         self.cam_th.start()
-    
+
+    def updateResult(self,text):
+        self.result_text.append(text)
+
+    #更新串口
     def updateSerlist(self):
         port_list_str = ser_read()
         self.ser_selection.clear()
@@ -287,3 +407,37 @@ class MainWindow(QMainWindow, Ui_mainwindow):
         else:
             self.ser_selection.addItem("无串口")
         return
+
+    #选择任务
+    def taskStart(self):
+        self.task_start.setEnabled(False)
+        self.timing_start.setEnabled(True)
+        global task_sta
+        task = self.task_selection.currentText()
+        if task == 'Task0':
+            task_sta = 0
+        elif task == 'Task1':
+            task_sta = 1
+        elif task == 'Task2':
+            task_sta = 2
+        self.task_sta.setText(str(task_sta))
+        self.result_text.append('Task %d start!'%task_sta)
+        return
+
+    #计时开始
+    def timingStart(self):
+        global timing_sta,start_time
+        start_time = time.clock()
+        timing_sta = 1
+        self.timing_start.setEnabled(False)
+        return
+
+    #终止任务
+    def taskTerminate(self):
+        self.task_start.setEnabled(True)
+        global timing_sta,task_sta
+        timing_sta = 0
+        task_sta = 0
+        self.task_sta.setText('0')
+        return
+
