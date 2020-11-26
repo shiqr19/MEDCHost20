@@ -445,6 +445,32 @@
      <string>1</string>
     </property>
    </widget>
+   <widget class="QLabel" name="label_5">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>570</y>
+      <width>108</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>fps</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="fps_text">
+    <property name="geometry">
+     <rect>
+      <x>240</x>
+      <y>570</y>
+      <width>141</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>0</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -452,7 +478,7 @@
      <x>0</x>
      <y>0</y>
      <width>1563</width>
-     <height>30</height>
+     <height>37</height>
     </rect>
    </property>
   </widget>

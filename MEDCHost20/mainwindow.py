@@ -17,6 +17,7 @@ ser_sta = 0
 task_sta = 0
 timing_sta = 0
 start_time = time.clock()
+last_fps_time = time.clock()
 in_area = 20
 around_area = 50
 def tran_pos(corners, pos, D):
@@ -122,7 +123,7 @@ def judge_in_area(x_send,y_send,x_target,y_target):
 class CamOpenThread(QThread):
     updated = QtCore.pyqtSignal(str)
 
-    def __init__(self,cam_open,cam,arena,ser,ball_val_L,X,Y,total_time,result_text,task_start,current_point_text,current_time_text,task_sta,tag_id,tag_id_text,parent=None):
+    def __init__(self,cam_open,cam,arena,ser,ball_val_L,X,Y,total_time,result_text,task_start,current_point_text,current_time_text,task_sta,tag_id,tag_id_text,fps_text,parent=None):
         super(CamOpenThread,self).__init__(parent)
         self.cam =cam
         self.arena = arena
@@ -139,6 +140,7 @@ class CamOpenThread(QThread):
         self.task_sta = task_sta
         self.tag_id = tag_id
         self.tag_id_text = tag_id_text
+        self.fps_text = fps_text
         self.tasks = [[[200,200]],[[200,200]],[[100,300],[300,300],[300,100],[100,100]]]
         self.point_count = [0,1,4]
         self.total_task = 0
@@ -170,12 +172,15 @@ class CamOpenThread(QThread):
         i=0
         while self.cam.isOpened():
             #display total time
-            global timing_sta,start_time,task_sta
-            if timing_sta == 1:
-                if i%30 == 0:
-                    time_present = float(time.clock())- float(start_time)
+            global timing_sta,start_time,task_sta,last_fps_time
+            if i%25 == 0:
+                time_present = float(time.clock())- float(start_time)
+                if timing_sta == 1:
                     self.total_time.setText('%d'%time_present)
-            
+                fps = 25/(time.clock()-last_fps_time)
+                last_fps_time = time.clock()
+                self.fps_text.setText(str(fps))
+
 
             i += 1
             _, image = self.cam.read()
@@ -391,7 +396,7 @@ class MainWindow(QMainWindow, Ui_mainwindow):
 
     #进入打开相机线程
     def openCamera(self):
-        self.cam_th = CamOpenThread(self.cam_open,self.camera,self.arena,self.ser,self.ball_val_L,self.X,self.Y,self.total_time,self.result_text,self.task_start,self.current_point_text,self.current_time_text,self.task_sta,self.tag_id,self.tag_id_text)
+        self.cam_th = CamOpenThread(self.cam_open,self.camera,self.arena,self.ser,self.ball_val_L,self.X,self.Y,self.total_time,self.result_text,self.task_start,self.current_point_text,self.current_time_text,self.task_sta,self.tag_id,self.tag_id_text,self.fps_text)
         self.cam_th.updated.connect(self.updateResult)
         self.cam_th.start()
 
