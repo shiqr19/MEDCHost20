@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1563</width>
-    <height>1215</height>
+    <width>1920</width>
+    <height>1080</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -50,7 +50,7 @@
     <property name="geometry">
      <rect>
       <x>640</x>
-      <y>10</y>
+      <y>-10</y>
       <width>720</width>
       <height>720</height>
      </rect>
@@ -101,8 +101,8 @@
    <widget class="QPushButton" name="serial_open">
     <property name="geometry">
      <rect>
-      <x>50</x>
-      <y>920</y>
+      <x>20</x>
+      <y>750</y>
       <width>150</width>
       <height>46</height>
      </rect>
@@ -140,8 +140,8 @@
    <widget class="QPushButton" name="serial_close">
     <property name="geometry">
      <rect>
-      <x>250</x>
-      <y>920</y>
+      <x>220</x>
+      <y>750</y>
       <width>150</width>
       <height>46</height>
      </rect>
@@ -166,8 +166,8 @@
    <widget class="QPushButton" name="cam_open">
     <property name="geometry">
      <rect>
-      <x>250</x>
-      <y>990</y>
+      <x>220</x>
+      <y>820</y>
       <width>150</width>
       <height>46</height>
      </rect>
@@ -179,8 +179,8 @@
    <widget class="QPushButton" name="ser_update">
     <property name="geometry">
      <rect>
-      <x>50</x>
-      <y>990</y>
+      <x>20</x>
+      <y>820</y>
       <width>150</width>
       <height>46</height>
      </rect>
@@ -282,27 +282,14 @@
    <widget class="QPushButton" name="task_start">
     <property name="geometry">
      <rect>
-      <x>50</x>
-      <y>850</y>
+      <x>20</x>
+      <y>680</y>
       <width>150</width>
       <height>46</height>
      </rect>
     </property>
     <property name="text">
      <string>选择任务</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="timing_start">
-    <property name="geometry">
-     <rect>
-      <x>50</x>
-      <y>780</y>
-      <width>150</width>
-      <height>46</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>开始计时</string>
     </property>
    </widget>
    <widget class="QLabel" name="task_sta">
@@ -323,7 +310,7 @@
      <rect>
       <x>20</x>
       <y>360</y>
-      <width>141</width>
+      <width>181</width>
       <height>24</height>
      </rect>
     </property>
@@ -334,7 +321,7 @@
    <widget class="QLabel" name="total_time">
     <property name="geometry">
      <rect>
-      <x>240</x>
+      <x>300</x>
       <y>360</y>
       <width>141</width>
       <height>24</height>
@@ -347,8 +334,8 @@
    <widget class="QPushButton" name="task_terminate">
     <property name="geometry">
      <rect>
-      <x>250</x>
-      <y>850</y>
+      <x>220</x>
+      <y>680</y>
       <width>150</width>
       <height>46</height>
      </rect>
@@ -360,10 +347,10 @@
    <widget class="QTextEdit" name="result_text">
     <property name="geometry">
      <rect>
-      <x>640</x>
-      <y>790</y>
-      <width>751</width>
-      <height>301</height>
+      <x>590</x>
+      <y>720</y>
+      <width>891</width>
+      <height>271</height>
      </rect>
     </property>
    </widget>
@@ -372,7 +359,7 @@
      <rect>
       <x>20</x>
       <y>430</y>
-      <width>151</width>
+      <width>211</width>
       <height>24</height>
      </rect>
     </property>
@@ -383,7 +370,7 @@
    <widget class="QLabel" name="current_time_text">
     <property name="geometry">
      <rect>
-      <x>240</x>
+      <x>300</x>
       <y>430</y>
       <width>141</width>
       <height>24</height>
@@ -397,20 +384,20 @@
     <property name="geometry">
      <rect>
       <x>20</x>
-      <y>500</y>
-      <width>171</width>
-      <height>24</height>
+      <y>490</y>
+      <width>211</width>
+      <height>31</height>
      </rect>
     </property>
     <property name="text">
-     <string>current point:</string>
+     <string>target point:</string>
     </property>
    </widget>
    <widget class="QLabel" name="current_point_text">
     <property name="geometry">
      <rect>
-      <x>240</x>
-      <y>500</y>
+      <x>260</x>
+      <y>490</y>
       <width>141</width>
       <height>24</height>
      </rect>
@@ -425,7 +412,7 @@
       <x>20</x>
       <y>70</y>
       <width>108</width>
-      <height>24</height>
+      <height>31</height>
      </rect>
     </property>
     <property name="text">
@@ -448,10 +435,10 @@
    <widget class="QLabel" name="label_5">
     <property name="geometry">
      <rect>
-      <x>20</x>
+      <x>30</x>
       <y>570</y>
       <width>108</width>
-      <height>24</height>
+      <height>31</height>
      </rect>
     </property>
     <property name="text">
@@ -461,7 +448,7 @@
    <widget class="QLabel" name="fps_text">
     <property name="geometry">
      <rect>
-      <x>240</x>
+      <x>300</x>
       <y>570</y>
       <width>141</width>
       <height>24</height>
@@ -477,7 +464,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1563</width>
+     <width>1920</width>
      <height>37</height>
     </rect>
    </property>

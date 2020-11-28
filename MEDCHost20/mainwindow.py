@@ -231,6 +231,20 @@ class CamOpenThread(QThread):
                     self.stop_timing_sta = 0
                     self.total_time_list = []
                 if task_sta != 0:
+                    if timing_sta == 0:
+                        if(task_sta == 1):
+                            timing_sta = 1
+                            start_time = time.clock()
+                            self.current_point_text.setText('(100,100)')
+                        if(task_sta == 2):
+                            self.current_point_text.setText('(100,300)')
+                            if(judge_in_area(Xsend,Ysend,100,100) == 1):
+                                timing_sta = 2
+                                self.total_time.setText('Ready...')
+                    if(timing_sta == 2):
+                        if(judge_in_area(Xsend,Ysend,100,100) != 1):
+                            timing_sta = 1
+                            start_time = time.clock()
                     if timing_sta == 1:
                         distance = judge_in_area(Xsend,Ysend,self.tasks[task_sta][self.current_point][0],self.tasks[task_sta][self.current_point][1])
                         if self.current_point < self.total_task:
@@ -285,9 +299,6 @@ class CamOpenThread(QThread):
                     if task_sta != 0:
                         target = self.tasks[task_sta][0]
                         self.current_point_text.setText('(%s,%s)'%(str(self.tasks[task_sta][self.current_point][0]),str(self.tasks[task_sta][self.current_point][1])))
-                        if timing_sta == 0:
-                            Xsend = target[0]
-                            Ysend = target[1]
                     s = bytes([250, (Xsend >> 7) + 1, (Xsend & 0x7f) + 1, (Ysend >> 7) + 1, (Ysend & 0x7f) + 1])
                             
                     try:
@@ -356,7 +367,6 @@ class MainWindow(QMainWindow, Ui_mainwindow):
         self.cam_label.setText(str(self.cam_int))
         self.tag_id_text.setText(str(self.tag_id))
         self.task_start.clicked.connect(self.taskStart)
-        self.timing_start.clicked.connect(self.timingStart)
         self.task_terminate.clicked.connect(self.taskTerminate)
 
     #打开串口
@@ -416,7 +426,6 @@ class MainWindow(QMainWindow, Ui_mainwindow):
     #选择任务
     def taskStart(self):
         self.task_start.setEnabled(False)
-        self.timing_start.setEnabled(True)
         global task_sta
         task = self.task_selection.currentText()
         if task == 'Task0':
@@ -429,13 +438,6 @@ class MainWindow(QMainWindow, Ui_mainwindow):
         self.result_text.append('Task %d start!'%task_sta)
         return
 
-    #计时开始
-    def timingStart(self):
-        global timing_sta,start_time
-        start_time = time.clock()
-        timing_sta = 1
-        self.timing_start.setEnabled(False)
-        return
 
     #终止任务
     def taskTerminate(self):
