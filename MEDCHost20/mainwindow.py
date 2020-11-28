@@ -123,7 +123,7 @@ def judge_in_area(x_send,y_send,x_target,y_target):
 class CamOpenThread(QThread):
     updated = QtCore.pyqtSignal(str)
 
-    def __init__(self,cam_open,cam,arena,ser,ball_val_L,X,Y,total_time,result_text,task_start,current_point_text,current_time_text,task_sta,tag_id,tag_id_text,fps_text,parent=None):
+    def __init__(self,cam_open,cam,arena,ser,ball_val_L,X,Y,total_time,result_text,task_start,current_point_text,current_time_text,task_sta,tag_id,tag_id_text,fps_text,ui_sta_text,parent=None):
         super(CamOpenThread,self).__init__(parent)
         self.cam =cam
         self.arena = arena
@@ -141,6 +141,7 @@ class CamOpenThread(QThread):
         self.tag_id = tag_id
         self.tag_id_text = tag_id_text
         self.fps_text = fps_text
+        self.ui_sta_text = ui_sta_text
         self.tasks = [[[200,200]],[[200,200]],[[100,300],[300,300],[300,100],[100,100]]]
         self.point_count = [0,1,4]
         self.total_task = 0
@@ -311,14 +312,15 @@ class CamOpenThread(QThread):
                     
 
             # 显示图像，其实有ui就不需要它了，但去掉的话ui也显示不出来，不知道为啥，只能这样最小化了
-            cv2.imshow("image", image)
-            cv2.moveWindow("image", 0, 0)
-            cv2.resizeWindow("image", 1, 1)
-            cv2.waitKey(1)
+            #cv2.imshow("image", image)
+            #cv2.moveWindow("image", 0, 0)
+            #cv2.resizeWindow("image", 1, 1)
+            #cv2.waitKey(1)
             # 在UI上画图
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            img = QImage(image.data, image.shape[1], image.shape[0], image.shape[1] * 3, QImage.Format_RGB888)  # 这句话只能这么写，查了一个小时……
-            self.arena.setPixmap(QPixmap.fromImage(img))
+            if self.ui_sta_text.currentText() == '实时' or (i % 10 == 0):
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                img = QImage(image.data, image.shape[1], image.shape[0], image.shape[1] * 3, QImage.Format_RGB888)  # 这句话只能这么写，查了一个小时……
+                self.arena.setPixmap(QPixmap.fromImage(img))
 
             if i == 20:
                 start = time.clock()
@@ -406,7 +408,7 @@ class MainWindow(QMainWindow, Ui_mainwindow):
 
     #进入打开相机线程
     def openCamera(self):
-        self.cam_th = CamOpenThread(self.cam_open,self.camera,self.arena,self.ser,self.ball_val_L,self.X,self.Y,self.total_time,self.result_text,self.task_start,self.current_point_text,self.current_time_text,self.task_sta,self.tag_id,self.tag_id_text,self.fps_text)
+        self.cam_th = CamOpenThread(self.cam_open,self.camera,self.arena,self.ser,self.ball_val_L,self.X,self.Y,self.total_time,self.result_text,self.task_start,self.current_point_text,self.current_time_text,self.task_sta,self.tag_id,self.tag_id_text,self.fps_text,self.ui_sta_text)
         self.cam_th.updated.connect(self.updateResult)
         self.cam_th.start()
 
