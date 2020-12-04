@@ -18,8 +18,8 @@ task_sta = 0
 timing_sta = 0
 start_time = time.clock()
 last_fps_time = time.clock()
-in_area = 20
-around_area = 50
+in_area = 10
+around_area = 20
 def tran_pos(corners, pos, D):
     """corners is a matrix with shape of 4*2 clockwise left-up to left-down
     pos is the coordinate of ball (x,y)
