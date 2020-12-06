@@ -20,24 +20,42 @@ start_time = time.clock()
 last_fps_time = time.clock()
 in_area = 10
 around_area = 20
-def tran_pos(corners, pos, D):
+
+def tran_pos(corners,pos,D):
     """corners is a matrix with shape of 4*2 clockwise left-up to left-down
     pos is the coordinate of ball (x,y)
     D is the edge length of the square"""
     Y = np.array([
-        [0, 0, 1],
-        [D, 0, 1],
-        [D, D, 1],
-        [0, D, 1]], dtype="float32")
+        [0, 0],
+        [D, 0],
+        [D, D],
+        [0, D]], dtype="float32")
+    X=corners.astype('float32')
+    M=cv2.getPerspectiveTransform(X,Y)
 
-    X = np.concatenate([corners, np.ones((4, 1))], axis=1)
-    AT = np.dot(np.dot(np.linalg.inv(np.dot(X.T, X)), X.T), Y)
-    pre = np.array([
-        [pos[0], pos[1], 1]
+    pre=np.array([
+        [pos[0],pos[1],1]
     ])
+    after=np.dot(M,pre.T)
+    return [int(after[0]/after[2]),int(after[1]/after[2])]
 
-    after = np.dot(pre, AT)[0]
-    return [int(after[0]), int(after[1])]
+def inv_tran_pos(corners,pos,D):
+    """corners is a matrix with shape of 4*2 clockwise left-up to left-down
+    pos is the coordinate of ball (x,y)
+    D is the edge length of the square"""
+    Y = np.array([
+        [0, 0],
+        [D, 0],
+        [D, D],
+        [0, D]], dtype="float32")
+    X=corners.astype('float32')
+    M=cv2.getPerspectiveTransform(Y,X)
+
+    pre=np.array([
+        [pos[0],pos[1],1]
+    ])
+    after=np.dot(M,pre.T)
+    return [int(after[0]/after[2]),int(after[1]/after[2])]
 
 
 # def find(lh, ls, lv, hh, hs, hv):
