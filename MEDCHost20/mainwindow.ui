@@ -278,6 +278,11 @@
       <string>Task2</string>
      </property>
     </item>
+    <item>
+     <property name="text">
+      <string>Task3</string>
+     </property>
+    </item>
    </widget>
    <widget class="QPushButton" name="task_start">
     <property name="geometry">
