@@ -135,13 +135,15 @@ def judge_in_area(x_send,y_send,x_target,y_target):
         return 2
     else:
         return 0
-
+# ----- 判断当前点是否在目标点周围某个半径的圆内。要走到的目标点半径是 in_area，要避开的点半径是 around_area。 
+#  如果在要走到的点半径内，就返回1； 如果在要避开的点的半径内，就返回一个>0的值；否则返回0
 
 
 class CamOpenThread(QThread):
     updated = QtCore.pyqtSignal(str)
 
-    def __init__(self,cam_open,cam,arena,ser,ball_val_L,X,Y,total_time,result_text,task_start,current_point_text,current_time_text,task_sta,tag_id,tag_id_text,fps_text,ui_sta_text,parent=None):
+    def __init__(self,cam_open,cam,arena,ser,ball_val_L,X,Y,total_time,result_text,task_start,current_point_text,
+                 current_time_text,task_sta,tag_id,tag_id_text,fps_text,ui_sta_text,parent=None):
         super(CamOpenThread,self).__init__(parent)
         self.cam =cam
         self.arena = arena
@@ -168,7 +170,35 @@ class CamOpenThread(QThread):
         self.in_area_sta = 0
         self.stop_timing_sta = 0
         self.total_time_list = []
+        # ----- 下面这行是后来加的，在目标点周围停留的时间 【！！！！！】
+        self.hold_time = 3.
         
+
+    def __in_departure_area(self, x, y):
+        departure_area_list = [None, None, (100, 100), (100, 300)]  # ----- 在这里改出发区域位置 【！！！！！】
+        if task_sta == 1:
+            return True
+        elif task_sta == 2 or task_sta == 3:
+            return judge_in_area(x, y, departure_area_list[task_sta][0], departure_area_list[task_sta][1]) == 1
+
+    def __in_target_area(self, x, y):
+        target_point = self.target_point_list[-1]
+        return judge_in_area(x, y, target_point[0], target_point[1]) == 1
+
+    def __in_wrong_target_area(self, x, y):
+        __wrong_target_point_list = self.target_point_list[0:-1]
+        for wrong_point in __wrong_target_point_list:
+            if judge_in_area(x, y, wrong_point[0], wrong_point[1]) == 1:
+                return wrong_point
+        return False
+
+    def __in_ban_area(self, x, y):
+        for ban_point in self.ban_point_list:
+            if judge_in_area(x, y, ban_point[0], ban_point[1]) > 0:
+                return True
+        return False
+    # ----- 上面这几个函数是后加的
+
 
     def run(self):
 
@@ -196,6 +226,8 @@ class CamOpenThread(QThread):
                 time_present = float(time.clock())- float(start_time)
                 if timing_sta == 1:
                     self.total_time.setText('%d'%time_present)
+                    # ----- timing_sta = 1 表示计时已经开始， = 其它数值，表示计时还未开始
+                    # ----- 注意这里用 timing_sta 表达的“总时间”total_time，而不是单个目标点的时间 current_time
                 fps = 25/(time.clock()-last_fps_time)
                 last_fps_time = time.clock()
                 self.fps_text.setText(str(fps))
@@ -243,6 +275,178 @@ class CamOpenThread(QThread):
                 # print(Xsend, Ysend)
 
                 #判断
+                # ----- 评分在这里！！！
+                # ----- timing_sta 表示的是现在是否在计时（总时间 total time，
+                # 而不是当前目标点时间 current time），
+                # timing_sta = 0 表示未开始计时，且小球不在出发区域内，
+                # timing_sta = 1 表示已开始计时， timing_sta = 2 表示小球在出发区域内等待开始计时
+                # ----- start_time 记录的是当前任务开始计时的系统时间
+                # ---------- 以下的代码改过
+                # ---------- 所有用来改参数的地方都用 【！！！！！】 标注了
+                if task_sta != 0:  # task_sta == 0 似乎应该什么都不做
+                    if timing_sta == 0:
+                        if task_sta == 1:
+                            timing_sta = 1
+                            self.updated.emit('Task 1 started ... ')
+                            self.target_point_list = [(200, 200)]  # ----- task1的目标点从这里改【！！！！！】 （可以有多个，按照倒序依次写成元组）
+                            __current_point = self.target_point_list[-1]
+                            self.current_point_text.setText("(%d, %d)" % (__current_point[0], __current_point[1]))
+                            self.in_target_area_sta = False
+                            self.in_ban_area_sta = False
+                            start_time = time.clock()
+                        elif task_sta == 2 or task_sta == 3:
+                            if self.__in_departure_area(Xsend, Ysend):
+                                timing_sta = 2
+                                self.updated.emit('Ready ... ')
+                                if task_sta == 2:
+                                    self.target_point_list = [(300, 300)]  # ----- task2的目标点从这里改【！！！！！】 （可以有多个，按照倒序依次写成元组）
+                                    self.ban_point_list = [(100, 300), (200, 200), (300, 100)]  # ----- task2 禁区在这里改【！！！！！】
+                                elif task_sta == 3:
+                                    self.target_point_list = [(x, 100 + 0.02 * (x - 200) ** 2) for x in range(125, 301, 25)] 
+                                    # ----- task3的目标点从这里改 【！！！！！】（按顺序依次写各个目标点，不用逆序，因为下面一行逆序过了）
+                                    self.target_point_list.reverse()
+                                __current_point = self.target_point_list[-1]
+                                self.current_point_text.setText("(%d, %d)" % (__current_point[0], __current_point[1]))
+                                self.in_target_area_sta = False
+                                self.in_ban_area_sta = False
+                    elif timing_sta == 2:
+                        # 此时一定有 task_sta == 2 or task_sta == 3
+                        if not self.__in_departure_area(Xsend, Ysend):
+                            timing_sta = 1
+                            self.updated.emit('Task %d started ... ' % (task_sta))
+                            start_time = time.clock()
+                    elif timing_sta == 1:
+                        # ----- task1
+                        if task_sta == 1:
+                            if self.in_target_area_sta == False:
+                                if self.__in_target_area(Xsend, Ysend) == True:
+                                    self.in_target_area_sta = True
+                                    self.in_target_area_start_time = time.clock()
+                            else:  # self.in_target_area_sta == True
+                                if self.__in_target_area(Xsend, Ysend) == False:
+                                    self.current_time_text.setText('0')
+                                    self.in_target_area_sta = False
+                                else:  # self.__in_target_area(Xsend, Ysend) == True
+                                    current_point_time = time.clock() - self.in_target_area_start_time
+                                    if current_point_time < self.hold_time:  # 停留时间还不够
+                                        self.current_time_text.setText("%f" % (current_point_time))
+                                    else:  # current_point_time >= self.hold_time  停留时间已经足够
+                                        self.current_time_text.setText("0")
+                                        __this_point = self.target_point_list.pop()
+                                        self.updated.emit('Arrived at point (%d, %d)! ' % (__this_point[0], __this_point[1]))
+                                        self.in_target_area_sta = False
+                                        if len(self.target_point_list) == 0:  # 所有点都走完了
+                                            task_total_time = time.clock() - start_time
+                                            self.updated.emit('Task 1 finished! Total time: %f' % (task_total_time))
+                                            task_sta = 0
+                                            timing_sta = 0
+                                            self.current_point_text.setText(" ")
+                                            # -----
+                                            self.total_time.setText("0")
+                                            self.task_start.setEnabled(True)
+                                            self.task_sta.setText('0')
+                                        else:
+                                            __current_point = self.target_point_list[-1]
+                                            self.current_point_text.setText("(%d, %d)" % (__current_point[0], __current_point[1]))
+                        
+                        elif task_sta == 2:
+                            # ----- task2
+                            if self.in_target_area_sta == False and self.in_ban_area_sta == False:
+                                if self.__in_target_area(Xsend, Ysend) == True and self.__in_ban_area(Xsend, Ysend) == False:
+                                    self.in_target_area_sta = True
+                                    self.in_target_area_start_time = time.clock()
+                                elif self.__in_target_area(Xsend, Ysend) == False and self.__in_ban_area(Xsend, Ysend) == True:
+                                    self.updated.emit('! Get into forbidden area!!! current coordinate: (%d, %d)' % (Xsend, Ysend))
+                                    self.in_ban_area_sta = True
+                                    self.in_ban_area_start_time = time.clock()
+                                # else:  # __in_target_area 和 __in_ban_area 都返回False
+                                    # 什么都不做
+                            elif self.in_target_area_sta == True and self.in_ban_area_sta == False:
+                                if self.__in_target_area(Xsend, Ysend) == True and self.__in_ban_area(Xsend, Ysend) == False:
+                                    current_point_time = time.clock() - self.in_target_area_start_time
+                                    if current_point_time < self.hold_time:  # 停留时间还不够
+                                        self.current_time_text.setText("%f" % (current_point_time))
+                                    else:  # current_point_time >= self.hold_time  停留时间已经足够
+                                        self.current_time_text.setText("0")
+                                        __this_point = self.target_point_list.pop()
+                                        self.updated.emit('Arrived at point (%d, %d)! ' % (__this_point[0], __this_point[1]))
+                                        self.in_target_area_sta = False
+                                        if len(self.target_point_list) == 0:  # 所有点都走完了
+                                            task_total_time = time.clock() - start_time
+                                            self.updated.emit('Task 2 finished! Total time: %f' % (task_total_time))
+                                            task_sta = 0
+                                            timing_sta = 0
+                                            self.current_point_text.setText(" ")
+                                            # -----
+                                            self.total_time.setText("0")
+                                            self.task_start.setEnabled(True)
+                                            self.task_sta.setText('0')
+                                        else:
+                                            __current_point = self.target_point_list[-1]
+                                            self.current_point_text.setText("(%d, %d)" % (__current_point[0], __current_point[1]))
+                                elif self.__in_target_area(Xsend, Ysend) == False and self.__in_ban_area(Xsend, Ysend) == False:
+                                    self.current_time_text.setText('0')
+                                    self.in_target_area_sta = False
+                                else:  # self.__in_target_area(Xsend, Ysend) == False and self.__in_ban_area(Xsend, Ysend) == True:
+                                    self.updated.emit('! Get into forbidden area!!! current coordinate: (%d, %d)' % (Xsend, Ysend))
+                                    self.in_ban_area_sta = True
+                                    self.in_target_area_sta = False
+                                    self.in_ban_area_start_time = time.clock()
+                            else:  # self.in_target_area_sta == False and self.in_ban_area_sta == True:
+                                if self.__in_ban_area(Xsend, Ysend) == False:
+                                    ban_total_time = time.clock() - self.in_ban_area_start_time
+                                    self.in_ban_area_sta = False
+                                    self.updated.emit('already moved out of forbidden area! total time spent in forbidden area: %f' % ban_total_time)
+                                    start_time -= 10 * ban_total_time
+                                # else:  # self.__in_target_area(Xsend, Ysend) == False and self.__in_ban_area(Xsend, Ysend) == True:
+                                    # 什么都不做
+                
+                        elif task_sta == 3:        
+                            # ----- task3
+                            # if self.__in_target_area(Xsend, Ysend) == False and self.__in_wrong_target_area(Xsend, Ysend) == False:
+                                # 什么也不做
+                            if self.__in_target_area(Xsend, Ysend) == True:
+                                __arrived_point = self.target_point_list.pop()
+                                self.updated.emit('Arrived at point: (%d, %d)' % (__arrived_point[0], __arrived_point[1]))
+                                if len(self.target_point_list) == 0:  # 所有点都走完了
+                                    task_total_time = time.clock() - start_time
+                                    self.updated.emit('Task 3 finished! Total time: %f' % (task_total_time))
+                                    task_sta = 0
+                                    timing_sta = 0
+                                    self.current_point_text.setText(" ")
+                                    # -----
+                                    self.total_time.setText("0")
+                                    self.task_start.setEnabled(True)
+                                    self.task_sta.setText('0')
+                                else:
+                                    __current_point = self.target_point_list[-1]
+                                    self.current_point_text.setText("(%d, %d)" % (__current_point[0], __current_point[1]))
+                            else:
+                                __wrong_point = self.__in_wrong_target_area(Xsend, Ysend)
+                                if __wrong_point != False:
+                                    while self.target_point_list[-1] != __wrong_point:
+                                        __missed_point = self.target_point_list.pop()
+                                        self.updated.emit('Missed point (%d, %d) !!!   10s penalized !' % (__missed_point[0], __missed_point[1]))
+                                        start_time -= 10  # ----- penalize 10s for missed point !  要改task3的惩罚时间到这里来改！
+                                    # ----- 现在“栈顶”是这次走到的点，可以用与上面self.__in_target_area(Xsend, Ysend) == True时相同的方法处理
+                                    __arrived_point = self.target_point_list.pop()
+                                    self.updated.emit('Arrived at point: (%d, %d)' % (__arrived_point[0], __arrived_point[1]))
+                                    if len(self.target_point_list) == 0:  # 所有点都走完了
+                                        task_total_time = time.clock() - start_time
+                                        self.updated.emit('Task 3 finished! Total time: %f' % (task_total_time))
+                                        task_sta = 0
+                                        timing_sta = 0
+                                        self.current_point_text.setText(" ")
+                                        # -----
+                                        self.total_time.setText("0")
+                                        self.task_start.setEnabled(True)
+                                        self.task_sta.setText('0')
+                                    else:
+                                        __current_point = self.target_point_list[-1]
+                                        self.current_point_text.setText("(%d, %d)" % (__current_point[0], __current_point[1]))
+                                    
+                                    
+                """                    
                 self.total_task = self.point_count[task_sta]
                 if task_sta == 0:
                     self.current_point = 0
@@ -306,7 +510,9 @@ class CamOpenThread(QThread):
                                             self.current_point_text.setText(' ')
                                             self.current_point = 0
                                             self.task_sta.setText('0')
+                """
                                             
+                # ----- 评分到这里结束了！
 
 
 
@@ -315,9 +521,11 @@ class CamOpenThread(QThread):
                 #向串口发数据
                 global ser_sta
                 if ser_sta == 1:
-                    if task_sta != 0:
-                        target = self.tasks[task_sta][0]
-                        self.current_point_text.setText('(%s,%s)'%(str(self.tasks[task_sta][self.current_point][0]),str(self.tasks[task_sta][self.current_point][1])))
+                    # ----- 没有太懂这里为啥又要set一遍current point的text，注释掉了。
+                    #   并且target = self.tasks[task_sta][0] 在 task_sta == 3 时越界了
+                    # if task_sta != 0:
+                        # target = self.tasks[task_sta][0]
+                        # self.current_point_text.setText('(%s,%s)'%(str(self.tasks[task_sta][self.current_point][0]),str(self.tasks[task_sta][self.current_point][1])))
                     s = bytes([250, (Xsend >> 7) + 1, (Xsend & 0x7f) + 1, (Ysend >> 7) + 1, (Ysend & 0x7f) + 1])
                             
                     try:
@@ -454,9 +662,13 @@ class MainWindow(QMainWindow, Ui_mainwindow):
             task_sta = 1
         elif task == 'Task2':
             task_sta = 2
+        elif task == "Task3":
+            task_sta = 3
         self.task_sta.setText(str(task_sta))
-        self.result_text.append('Task %d start!'%task_sta)
+        # self.result_text.append('Task %d start!'%task_sta)  # ----- 这里注释掉了：把task_start放到上面了
         return
+        # ----- task_sta 表示正在运行某个task（是“正在运行”而不是“在选择框里选择了”）
+        # ----- 点击“选择任务”按钮之后，才会把 task_sta 变成相应的任务值。点击之前其保持为0
 
 
     #终止任务
@@ -466,5 +678,6 @@ class MainWindow(QMainWindow, Ui_mainwindow):
         timing_sta = 0
         task_sta = 0
         self.task_sta.setText('0')
+        self.total_time.setText("0")  # ----- 加了一句，终止任务要把total time 清零！
         return
-
+        # ----- 点击“终止任务”之后，会把 task_sta 和 timing_sta 都置零（保证了某个非0的task开始时，timing_sta == 0）
