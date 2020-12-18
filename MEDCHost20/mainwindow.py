@@ -175,7 +175,8 @@ class CamOpenThread(QThread):
         
 
     def __in_departure_area(self, x, y):
-        departure_area_list = [None, None, (100, 300), (100, 200)]  # ----- 在这里改出发区域位置 【！！！！！】
+        # departure_area_list = [None, None, (100, 100), (100, 300)]  # ----- 在这里改出发区域位置 【！！！！！】
+        departure_area_list = [None, None, (100, 100), (100, 200)] 
         if task_sta == 1:
             return True
         elif task_sta == 2 or task_sta == 3:
@@ -299,10 +300,14 @@ class CamOpenThread(QThread):
                                 timing_sta = 2
                                 self.updated.emit('Ready ... ')
                                 if task_sta == 2:
-                                    self.target_point_list = [(300, 100)]  # ----- task2的目标点从这里改【！！！！！】 （可以有多个，按照倒序依次写成元组）
-                                    self.ban_point_list = [(100, 100), (200, 200), (300, 300)]  # ----- task2 禁区在这里改【！！！！！】
+                                    self.target_point_list = [(300, 300)]  # ----- task2的目标点从这里改【！！！！！】 （可以有多个，按照倒序依次写成元组）
+                                    self.ban_point_list = [(100, 300), (200, 200), (300, 100)]  # ----- task2 禁区在这里改【！！！！！】
+                                    # ----- 下面这行是task2改规则之后加的
+                                    self.task2_into_forbidden_area = False
+                                    # -----
                                 elif task_sta == 3:
-                                    self.target_point_list = [(x, round(200 +100 * math.sin(0.01*math.pi*x))) for x in range(100, 301, 25)] 
+                                    # self.target_point_list = [(x, 100 + 0.02 * (x - 200) ** 2) for x in range(125, 301, 25)] 
+                                    self.target_point_list = [(x, round(200 + 100 * math.sin(0.01 * math.pi * x))) for x in range(125, 301, 25)] 
                                     # ----- task3的目标点从这里改 【！！！！！】（按顺序依次写各个目标点，不用逆序，因为下面一行逆序过了）
                                     self.target_point_list.reverse()
                                 __current_point = self.target_point_list[-1]
@@ -358,6 +363,12 @@ class CamOpenThread(QThread):
                                 elif self.__in_target_area(Xsend, Ysend) == False and self.__in_ban_area(Xsend, Ysend) == True:
                                     self.updated.emit('! Get into forbidden area!!! current coordinate: (%d, %d)' % (Xsend, Ysend))
                                     self.in_ban_area_sta = True
+                                    # ----- 下面这些行是 task2 改规则之后加入的
+                                    if False == self.task2_into_forbidden_area:
+                                        self.task2_into_forbidden_area = True
+                                        start_time -= 10
+                                        self.updated.emit('Penalize 10s !')
+                                    # ----- 上面这些行是 task2 改规则之后加入的
                                     self.in_ban_area_start_time = time.clock()
                                 # else:  # __in_target_area 和 __in_ban_area 都返回False
                                     # 什么都不做
@@ -397,7 +408,7 @@ class CamOpenThread(QThread):
                                     ban_total_time = time.clock() - self.in_ban_area_start_time
                                     self.in_ban_area_sta = False
                                     self.updated.emit('already moved out of forbidden area! total time spent in forbidden area: %f' % ban_total_time)
-                                    start_time -= 10 * ban_total_time
+                                    start_time -= 10 * ban_total_time  # ----- 【！！！！！】 在这里该罚时的比例
                                 # else:  # self.__in_target_area(Xsend, Ysend) == False and self.__in_ban_area(Xsend, Ysend) == True:
                                     # 什么都不做
                 
@@ -662,8 +673,10 @@ class MainWindow(QMainWindow, Ui_mainwindow):
             task_sta = 1
         elif task == 'Task2':
             task_sta = 2
+            self.result_text.append('Starting point of task 2:(100, 100). Please move to this point.')  # ----- 在这里改起始点的提示信息【！！！！！】
         elif task == "Task3":
             task_sta = 3
+            self.result_text.append('Starting point of task 3:(100, 200). Please move to this point.')  # ----- 在这里改起始点的提示信息【！！！！！】
         self.task_sta.setText(str(task_sta))
         # self.result_text.append('Task %d start!'%task_sta)  # ----- 这里注释掉了：把task_start放到上面了
         return
