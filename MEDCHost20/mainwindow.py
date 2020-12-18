@@ -302,7 +302,7 @@ class CamOpenThread(QThread):
                                     self.target_point_list = [(300, 100)]  # ----- task2的目标点从这里改【！！！！！】 （可以有多个，按照倒序依次写成元组）
                                     self.ban_point_list = [(100, 100), (200, 200), (300, 300)]  # ----- task2 禁区在这里改【！！！！！】
                                 elif task_sta == 3:
-                                    self.target_point_list = [(x, 200 +100 * math.sin(0.01*math.pi*x)) for x in range(100, 300, 25)] 
+                                    self.target_point_list = [(x, round(200 +100 * math.sin(0.01*math.pi*x))) for x in range(100, 301, 25)] 
                                     # ----- task3的目标点从这里改 【！！！！！】（按顺序依次写各个目标点，不用逆序，因为下面一行逆序过了）
                                     self.target_point_list.reverse()
                                 __current_point = self.target_point_list[-1]
